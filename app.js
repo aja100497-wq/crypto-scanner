@@ -4,9 +4,10 @@
 
 const API = 'https://api.upbit.com/v1';
 const STABLES = new Set(['USDT','USDC','DAI','FDUSD','TUSD','USDD','PYUSD','EURI','XAUT']);
-const TOP_N = 60;          // 캔들 분석 대상 (24h 거래대금 상위)
+const TOP_N = 50;          // 캔들 분석 대상 (24h 거래대금 상위)
 const CANDLE_COUNT = 90;
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
+const sleep = ms => new Promise(res => setTimeout(res, ms));
 
 let RESULTS = [];
 let REGIME = { label: '분석 중', cls: '', adj: 0, note: '' };
@@ -54,11 +55,24 @@ function atr(highs, lows, closes, n = 14) {
 }
 const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
 
-/* ---------- API ---------- */
-async function api(path) {
-  const r = await fetch(API + path);
-  if (!r.ok) throw new Error('API ' + r.status);
-  return r.json();
+/* ---------- API (429/일시 장애 시 지수 백오프로 재시도) ---------- */
+async function api(path, attempt = 0) {
+  const MAX = 6;
+  let res = null, netErr = null;
+  try {
+    res = await fetch(API + path);
+  } catch (e) { netErr = e; }
+  // 429(요청 제한) 응답에는 CORS 헤더가 없어 브라우저에서 네트워크 에러로 보임 → 재시도 필수
+  const retryable = netErr || (res && (res.status === 429 || res.status >= 500));
+  if (retryable) {
+    if (attempt >= MAX) throw netErr || new Error('API ' + res.status);
+    const wait = Math.min(15000, 1200 * Math.pow(2, attempt)) + Math.random() * 400;
+    setLoad(`업비트 연결 재시도 중… (${attempt + 1}/${MAX})`);
+    await sleep(wait);
+    return api(path, attempt + 1);
+  }
+  if (!res.ok) throw new Error('API ' + res.status);
+  return res.json();
 }
 async function loadMarkets() {
   const all = await api('/market/all?isDetails=false');
@@ -74,6 +88,7 @@ async function loadTickers(markets) {
     const chunk = markets.slice(i, i + 80).map(m => m.market).join(',');
     const data = await api('/ticker?markets=' + chunk);
     out.push(...data);
+    if (i + 80 < markets.length) await sleep(400); // 요청 제한 방지
   }
   return out;
 }
@@ -229,7 +244,7 @@ async function refresh() {
 
     const coins = [];
     let done = 0;
-    const CONC = 6;
+    const CONC = 3; // 업비트 요청 제한을 피하기 위해 동시 요청 수 축소
     for (let i = 0; i < sorted.length; i += CONC) {
       const batch = sorted.slice(i, i + CONC);
       const res = await Promise.all(batch.map(async t => {
@@ -257,6 +272,7 @@ async function refresh() {
         coin.score = score; coin.factors = factors; coin.demerits = demerits;
         coins.push(coin);
       }
+      await sleep(500); // 배치 간 휴식으로 요청 제한 방지
     }
 
     coins.sort((a, b) => b.score - a.score);
