@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코인 스캐너 — 실시간 추천</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">📊</span>
+    <div>
+      <h1>코인 스캐너</h1>
+      <p class="sub">업비트 실시간 데이터 · 100점 스코어링</p>
+    </div>
+  </div>
+  <div class="top-right">
+    <span id="regime" class="regime">시장 분석 중…</span>
+    <span id="updated" class="updated"></span>
+    <button id="refresh" class="btn">⟳ 새로고침</button>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p id="loadingMsg">데이터 수집 중…</p>
+  </div>
+
+  <div id="error" class="error hidden">
+    <p>⚠️ 데이터를 불러오지 못했습니다. 업비트 API 연결을 확인하세요.</p>
+    <button id="retry" class="btn">다시 시도</button>
+  </div>
+
+  <div id="app" class="hidden">
+    <section class="summary">
+      <h2>🎯 오늘 핵심 요약 <span id="asof" class="asof"></span></h2>
+      <div id="best3" class="best3"></div>
+      <p id="regimeNote" class="note"></p>
+    </section>
+
+    <section id="breakoutSection">
+      <h2>🚀 조기 돌파 후보 <span class="hint">20일 고점 3% 이내 + 거래량 급증</span></h2>
+      <div id="breakouts" class="chips"></div>
+    </section>
+
+    <section>
+      <h2>📋 TOP 20 스코어 <span class="hint">클릭하면 상세 분석</span></h2>
+      <div class="table-wrap">
+        <table id="rankTable">
+          <thead>
+            <tr>
+              <th>#</th><th>코인</th><th>현재가</th><th>24h</th><th>7일</th>
+              <th>점수</th><th>등급</th><th>신호</th><th>거래대금(24h)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="how">
+      <h2>⚙️ 스코어 산정 방식</h2>
+      <ul>
+        <li><b>A 추세 25점</b> — 종가 vs 20일/60일선, 정배열, 20일선 기울기</li>
+        <li><b>B 모멘텀 20점</b> — RSI(14), 7일 수익률</li>
+        <li><b>C 돌파 15점</b> — 20일 고점 근접도 + 거래량 동반 여부</li>
+        <li><b>D 거래량 15점</b> — 24시간 거래대금, 거래량 급증 비율</li>
+        <li><b>E 변동성 10점</b> — ATR 기준 적정 변동성 (과도하면 감점)</li>
+        <li><b>F 상대강도 10점</b> — 비트코인 대비 30일 초과수익</li>
+        <li><b>감점</b> — 신규상장 −10, 과열(+30%↑) −10, 유동성 부족 −10, 급락 −5, RSI 80↑ −5</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <button id="modalClose" class="modal-close">✕</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<footer>
+  <p>본 앱은 업비트 공개 API의 실시간 시세로 계산된 <b>스크리닝 도구</b>이며, 투자 조언이 아닙니다.
+  점수가 높다고 수익이 보장되지 않으며, 모든 투자 판단과 책임은 본인에게 있습니다.</p>
+  <p class="foot-sub">데이터: Upbit Public API · 새로고침 시 재계산 · 5분마다 자동 갱신</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
